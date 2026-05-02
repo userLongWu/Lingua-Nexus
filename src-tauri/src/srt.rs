@@ -26,8 +26,35 @@ pub fn parse_card_texts(input: &str) -> Vec<String> {
             })
             .collect()
     } else {
-        normalized.lines().filter_map(normalize_card_text).collect()
+        normalized
+            .lines()
+            .flat_map(split_plain_text_line)
+            .filter_map(|text| normalize_card_text(&text))
+            .collect()
     }
+}
+
+fn split_plain_text_line(line: &str) -> Vec<String> {
+    let mut sentences = Vec::new();
+    let mut current = String::new();
+
+    for ch in line.chars() {
+        current.push(ch);
+        if matches!(ch, '.' | '!' | '?' | '。' | '！' | '？') {
+            let sentence = current.trim();
+            if !sentence.is_empty() {
+                sentences.push(sentence.to_string());
+            }
+            current.clear();
+        }
+    }
+
+    let remaining = current.trim();
+    if !remaining.is_empty() {
+        sentences.push(remaining.to_string());
+    }
+
+    sentences
 }
 
 fn normalize_card_text(text: &str) -> Option<String> {

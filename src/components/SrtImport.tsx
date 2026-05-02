@@ -1,7 +1,7 @@
 import { FormEvent, useMemo, useState } from "react";
 import { parseImportPreview } from "../lib/cardUtils";
-import { importFromSrt } from "../lib/tauriClient";
-import type { Card } from "../lib/types";
+import { importSrt } from "../lib/api";
+import type { Card } from "../types";
 
 interface SrtImportProps {
   onImported: (cards: Card[]) => void;
@@ -27,7 +27,7 @@ export function SrtImport({ onImported }: SrtImportProps) {
 
     setLoading(true);
     try {
-      const imported = await importFromSrt(content, sourceTitle);
+      const imported = await importSrt(content, sourceTitle);
       onImported(imported);
       setContent("");
       setSourceTitle("");

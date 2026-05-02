@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { getSourceLabel } from "../lib/cardUtils";
-import { reviewCard } from "../lib/tauriClient";
-import type { Card } from "../lib/types";
+import { reviewCard } from "../lib/api";
+import type { Card } from "../types";
 
 interface RevisoryFlowProps {
   cards: Card[];
@@ -28,6 +28,7 @@ export function RevisoryFlow({
   const [revealed, setRevealed] = useState(false);
   const [submittingScore, setSubmittingScore] = useState<number | null>(null);
   const [reviewError, setReviewError] = useState<string | null>(null);
+  const [reviewedCount, setReviewedCount] = useState(0);
   const activeCard = cards[0] ?? null;
 
   async function handleScore(score: number) {
@@ -40,6 +41,7 @@ export function RevisoryFlow({
     try {
       await reviewCard(activeCard.id, score);
       onReviewed(activeCard.id);
+      setReviewedCount((current) => current + 1);
       setRevealed(false);
     } catch (err) {
       setReviewError(err instanceof Error ? err.message : String(err));
@@ -64,7 +66,15 @@ export function RevisoryFlow({
   }
 
   if (!activeCard) {
-    return <ReviewState title="No cards due for review" />;
+    return (
+      <ReviewState title={reviewedCount > 0 ? "Review session complete" : "No cards due for review"}>
+        {reviewedCount > 0 ? (
+          <p className="mt-2 text-sm text-slate-600">
+            Reviewed {reviewedCount} {reviewedCount === 1 ? "card" : "cards"}. Next review dates were updated.
+          </p>
+        ) : null}
+      </ReviewState>
+    );
   }
 
   return (

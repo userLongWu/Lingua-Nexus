@@ -2,7 +2,7 @@ import { useState } from "react";
 import { DictionaryLookup } from "../components/DictionaryLookup";
 import { ManualCardForm } from "../components/ManualCardForm";
 import { SrtImport } from "../components/SrtImport";
-import type { Card } from "../lib/types";
+import type { Card } from "../types";
 
 export function ImportPage() {
   const [lastCreated, setLastCreated] = useState<string | null>(null);

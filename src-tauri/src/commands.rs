@@ -19,9 +19,26 @@ pub fn get_cards_due_today(state: State<'_, db::AppState>) -> Result<Vec<Card>, 
 }
 
 #[tauri::command]
+pub fn get_due_cards(state: State<'_, db::AppState>) -> Result<Vec<Card>, String> {
+    get_cards_due_today(state)
+}
+
+#[tauri::command]
 pub fn get_all_cards(state: State<'_, db::AppState>) -> Result<Vec<Card>, String> {
     let conn = state.conn.lock().map_err(|err| err.to_string())?;
     db::all_cards(&conn)
+}
+
+#[tauri::command]
+pub fn update_card(state: State<'_, db::AppState>, card: Card) -> Result<Card, String> {
+    let conn = state.conn.lock().map_err(|err| err.to_string())?;
+    db::update_card(&conn, card)
+}
+
+#[tauri::command]
+pub fn delete_card(state: State<'_, db::AppState>, card_id: String) -> Result<(), String> {
+    let conn = state.conn.lock().map_err(|err| err.to_string())?;
+    db::delete_card(&conn, &card_id)
 }
 
 #[tauri::command]
@@ -85,6 +102,15 @@ pub fn import_from_srt(
         .collect();
 
     db::create_cards(&conn, cards)
+}
+
+#[tauri::command]
+pub fn import_srt(
+    state: State<'_, db::AppState>,
+    srt_content: String,
+    source_title: String,
+) -> Result<Vec<Card>, String> {
+    import_from_srt(state, srt_content, source_title)
 }
 
 #[tauri::command]

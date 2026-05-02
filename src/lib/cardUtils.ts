@@ -1,4 +1,4 @@
-import type { Card, ManualCardInput, SourceFilter, SourceType } from "./types";
+import type { Card, ManualCardInput, SourceFilter, SourceType } from "../types";
 
 export function buildManualCard(input: ManualCardInput): Card {
   return makeCard("text", input.originalText, {
@@ -92,7 +92,11 @@ export function parseImportPreview(input: string): string[] {
       .filter(Boolean);
   }
 
-  return normalized.split("\n").map(normalizeSpaces).filter(Boolean);
+  return normalized
+    .split("\n")
+    .flatMap(splitPlainTextLine)
+    .map(normalizeSpaces)
+    .filter(Boolean);
 }
 
 export function parseTags(tags: string): string[] {
@@ -117,4 +121,27 @@ function normalizeOptional(value: string): string | null {
 
 function normalizeSpaces(value: string): string {
   return value.trim().replace(/\s+/g, " ");
+}
+
+function splitPlainTextLine(line: string): string[] {
+  const sentences: string[] = [];
+  let current = "";
+
+  for (const character of line) {
+    current += character;
+    if ([".", "!", "?", "。", "！", "？"].includes(character)) {
+      const sentence = current.trim();
+      if (sentence) {
+        sentences.push(sentence);
+      }
+      current = "";
+    }
+  }
+
+  const remaining = current.trim();
+  if (remaining) {
+    sentences.push(remaining);
+  }
+
+  return sentences;
 }

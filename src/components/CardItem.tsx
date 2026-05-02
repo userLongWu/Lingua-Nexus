@@ -1,5 +1,5 @@
 import { formatDate, getSourceLabel } from "../lib/cardUtils";
-import type { Card } from "../lib/types";
+import type { Card } from "../types";
 
 interface CardItemProps {
   card: Card;

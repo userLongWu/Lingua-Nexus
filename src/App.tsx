@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Sidebar } from "./components/Sidebar";
-import type { PageKey } from "./lib/types";
+import type { PageKey } from "./types";
 import { CardsPage } from "./pages/CardsPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { ImportPage } from "./pages/ImportPage";

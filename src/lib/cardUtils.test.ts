@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildManualCard, filterCards, getSourceLabel } from "./cardUtils";
-import type { Card } from "./types";
+import type { Card } from "../types";
 
 describe("cardUtils", () => {
   it("builds a trimmed manual text card with spaced repetition defaults", () => {

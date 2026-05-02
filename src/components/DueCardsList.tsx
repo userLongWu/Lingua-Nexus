@@ -1,4 +1,4 @@
-import type { Card } from "../lib/types";
+import type { Card } from "../types";
 import { CardItem } from "./CardItem";
 
 interface DueCardsListProps {

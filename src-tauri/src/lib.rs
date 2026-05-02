@@ -20,11 +20,15 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::create_card,
             commands::get_cards_due_today,
+            commands::get_due_cards,
             commands::get_all_cards,
+            commands::update_card,
+            commands::delete_card,
             commands::get_card_stats,
             commands::get_card_reviews,
             commands::review_card,
             commands::import_from_srt,
+            commands::import_srt,
             commands::lookup_word
         ])
         .run(tauri::generate_context!())

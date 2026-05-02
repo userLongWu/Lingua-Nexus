@@ -1,7 +1,7 @@
 import { FormEvent, useState } from "react";
 import { buildManualCard } from "../lib/cardUtils";
-import { createCard } from "../lib/tauriClient";
-import type { Card } from "../lib/types";
+import { createCard } from "../lib/api";
+import type { Card } from "../types";
 
 interface ManualCardFormProps {
   onCreated: (card: Card) => void;

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { RevisoryFlow } from "../components/RevisoryFlow";
-import { getCardsDueToday } from "../lib/tauriClient";
-import type { Card } from "../lib/types";
+import { getCardsDueToday } from "../lib/api";
+import type { Card } from "../types";
 
 export function ReviewPage() {
   const [cards, setCards] = useState<Card[]>([]);

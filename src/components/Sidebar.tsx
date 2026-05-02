@@ -1,4 +1,4 @@
-import type { PageKey } from "../lib/types";
+import type { PageKey } from "../types";
 
 interface SidebarProps {
   activePage: PageKey;

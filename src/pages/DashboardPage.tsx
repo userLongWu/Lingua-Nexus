@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { DueCardsList } from "../components/DueCardsList";
 import { StatsCard } from "../components/StatsCard";
-import { getCardStats, getCardsDueToday } from "../lib/tauriClient";
-import type { Card, CardStats } from "../lib/types";
+import { getCardStats, getCardsDueToday } from "../lib/api";
+import type { Card, CardStats } from "../types";
 
 export function DashboardPage() {
   const [stats, setStats] = useState<CardStats>({ dueToday: 0, total: 0 });

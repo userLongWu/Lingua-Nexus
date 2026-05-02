@@ -1,6 +1,6 @@
 import { FormEvent, useState } from "react";
-import { createCard, lookupWord } from "../lib/tauriClient";
-import type { Card } from "../lib/types";
+import { createCard, lookupWord } from "../lib/api";
+import type { Card } from "../types";
 
 interface DictionaryLookupProps {
   onCreated: (card: Card) => void;

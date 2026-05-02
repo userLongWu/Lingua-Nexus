@@ -85,6 +85,69 @@ pub fn all_cards(conn: &Connection) -> Result<Vec<Card>, String> {
     )
 }
 
+pub fn update_card(conn: &Connection, card: Card) -> Result<Card, String> {
+    let card = normalize_existing_card(card)?;
+    let updated = conn
+        .execute(
+            r#"
+            UPDATE cards
+            SET source_type = ?1,
+                source_title = ?2,
+                original_text = ?3,
+                translated_text = ?4,
+                word_to_learn = ?5,
+                pronunciation = ?6,
+                image_path = ?7,
+                audio_path = ?8,
+                tags = ?9,
+                easiness_factor = ?10,
+                repetition_number = ?11,
+                interval_days = ?12,
+                next_review_date = ?13,
+                last_review_date = ?14,
+                extra_data = ?15
+            WHERE id = ?16
+            "#,
+            params![
+                card.source_type,
+                card.source_title,
+                card.original_text,
+                card.translated_text,
+                card.word_to_learn,
+                card.pronunciation,
+                card.image_path,
+                card.audio_path,
+                card.tags,
+                card.easiness_factor,
+                card.repetition_number,
+                card.interval_days,
+                card.next_review_date,
+                card.last_review_date,
+                card.extra_data,
+                card.id,
+            ],
+        )
+        .map_err(|err| err.to_string())?;
+
+    if updated == 0 {
+        return Err("Card not found.".to_string());
+    }
+
+    find_card(conn, &card.id)
+}
+
+pub fn delete_card(conn: &Connection, card_id: &str) -> Result<(), String> {
+    let deleted = conn
+        .execute("DELETE FROM cards WHERE id = ?1", params![card_id])
+        .map_err(|err| err.to_string())?;
+
+    if deleted == 0 {
+        return Err("Card not found.".to_string());
+    }
+
+    Ok(())
+}
+
 pub fn card_stats(conn: &Connection) -> Result<CardStats, String> {
     let today = today_string();
     let total = conn
@@ -227,6 +290,30 @@ fn normalize_new_card(mut card: Card) -> Result<Card, String> {
         card.next_review_date = Some(today_string());
     }
 
+    card.source_type = card.source_type.trim().to_string();
+    card.original_text = card.original_text.trim().to_string();
+
+    Ok(card)
+}
+
+fn normalize_existing_card(mut card: Card) -> Result<Card, String> {
+    if card.id.trim().is_empty() {
+        return Err("Card id is required.".to_string());
+    }
+    if card.source_type.trim().is_empty() {
+        return Err("Source type is required.".to_string());
+    }
+    if card.original_text.trim().is_empty() {
+        return Err("Original text is required.".to_string());
+    }
+    if card.tags.is_none() {
+        card.tags = Some("[]".to_string());
+    }
+    if card.easiness_factor <= 0.0 {
+        card.easiness_factor = 2.5;
+    }
+
+    card.id = card.id.trim().to_string();
     card.source_type = card.source_type.trim().to_string();
     card.original_text = card.original_text.trim().to_string();
 

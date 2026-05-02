@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { CardDetail } from "../components/CardDetail";
 import { CardItem } from "../components/CardItem";
 import { filterCards } from "../lib/cardUtils";
-import { getAllCards, getCardReviews } from "../lib/tauriClient";
-import type { Card, Review, SourceFilter } from "../lib/types";
+import { deleteCard, getAllCards, getCardReviews, updateCard } from "../lib/api";
+import type { Card, Review, SourceFilter } from "../types";
 
 export function CardsPage() {
   const [cards, setCards] = useState<Card[]>([]);
@@ -15,6 +15,9 @@ export function CardsPage() {
   const [error, setError] = useState<string | null>(null);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
+  const [mutationError, setMutationError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const filteredCards = useMemo(
     () => filterCards(cards, query, sourceFilter),
     [cards, query, sourceFilter],
@@ -46,6 +49,7 @@ export function CardsPage() {
       return;
     }
 
+    setMutationError(null);
     setHistoryLoading(true);
     setHistoryError(null);
     getCardReviews(selectedCard.id)
@@ -56,6 +60,45 @@ export function CardsPage() {
       })
       .finally(() => setHistoryLoading(false));
   }, [selectedCard]);
+
+  async function handleSave(card: Card) {
+    setSaving(true);
+    setMutationError(null);
+    try {
+      const saved = await updateCard(card);
+      setCards((currentCards) =>
+        currentCards.map((currentCard) => (currentCard.id === saved.id ? saved : currentCard)),
+      );
+      setSelectedCard(saved);
+    } catch (err) {
+      setMutationError(err instanceof Error ? err.message : String(err));
+      throw err;
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDelete(card: Card) {
+    if (!window.confirm("Delete this card and its review history?")) {
+      return;
+    }
+
+    setDeleting(true);
+    setMutationError(null);
+    try {
+      await deleteCard(card.id);
+      setCards((currentCards) => {
+        const nextCards = currentCards.filter((currentCard) => currentCard.id !== card.id);
+        setSelectedCard(nextCards[0] ?? null);
+        return nextCards;
+      });
+      setReviews([]);
+    } catch (err) {
+      setMutationError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   return (
     <div className="page-shell">
@@ -115,6 +158,11 @@ export function CardsPage() {
             reviews={reviews}
             loading={historyLoading}
             error={historyError}
+            saving={saving}
+            deleting={deleting}
+            mutationError={mutationError}
+            onSave={handleSave}
+            onDelete={handleDelete}
           />
         </div>
       ) : null}
