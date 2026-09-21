@@ -1,4 +1,4 @@
-use crate::models::{Card, CardStats, Review};
+use crate::models::{Card, CardStats, Review, ReviewDay};
 use chrono::Local;
 use rusqlite::{params, Connection, OptionalExtension, Row};
 use std::fs;
@@ -165,7 +165,25 @@ pub fn card_stats(conn: &Connection) -> Result<CardStats, String> {
         )
         .map_err(|err| err.to_string())?;
 
-    Ok(CardStats { due_today, total })
+    let mut review_days = Vec::with_capacity(7);
+    for days_ago in (0..7).rev() {
+        let date = (Local::now().date_naive() - chrono::Duration::days(days_ago)).to_string();
+        let count = conn
+            .query_row(
+                "SELECT COUNT(*) FROM reviews WHERE date(review_date, 'localtime') = ?1",
+                params![date],
+                |row| row.get(0),
+            )
+            .map_err(|err| err.to_string())?;
+        review_days.push(ReviewDay { date, count });
+    }
+    let reviewed_today = review_days.last().map_or(0, |day| day.count);
+    Ok(CardStats {
+        due_today,
+        total,
+        reviewed_today,
+        review_days,
+    })
 }
 
 pub fn reviews_for_card(conn: &Connection, card_id: &str) -> Result<Vec<Review>, String> {
@@ -247,7 +265,7 @@ pub fn update_review_schedule(
     Ok(())
 }
 
-fn insert_card(conn: &Connection, card: &Card) -> Result<(), String> {
+pub(crate) fn insert_card(conn: &Connection, card: &Card) -> Result<(), String> {
     conn.execute(
         r#"
         INSERT INTO cards (

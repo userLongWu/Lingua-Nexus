@@ -170,3 +170,58 @@ fn review_history_insert_failure_keeps_schedule_unchanged() {
         card.next_review_date
     );
 }
+
+#[test]
+fn dashboard_counts_review_events_for_seven_local_days_including_zeroes() {
+    let conn = Connection::open_in_memory().unwrap();
+    run_migration(&conn).unwrap();
+    let card = create_card(&conn, Card::new("text", "stats fixture")).unwrap();
+    conn.execute("INSERT INTO reviews(id,card_id,score,review_date) VALUES ('today',?1,4,datetime('now')), ('six',?1,3,datetime('now','-6 days')), ('old',?1,2,datetime('now','-8 days'))", [&card.id]).unwrap();
+    let stats = lingua_nexus_lib::db::card_stats(&conn).unwrap();
+    assert_eq!(stats.reviewed_today, 1);
+    assert_eq!(stats.review_days.len(), 7);
+    assert_eq!(stats.review_days.first().unwrap().count, 1);
+    assert_eq!(
+        stats.review_days.last().unwrap().date,
+        chrono::Local::now().date_naive().to_string()
+    );
+    assert_eq!(
+        stats.review_days.iter().map(|day| day.count).sum::<i64>(),
+        2
+    );
+    assert_eq!(stats.review_days[1].count, 0);
+}
+
+#[test]
+fn hostile_schedule_returns_an_error_without_poisoning_database_mutex() {
+    let conn = Connection::open_in_memory().unwrap();
+    run_migration(&conn).unwrap();
+    let state = std::sync::Mutex::new(conn);
+    let result = std::panic::catch_unwind(|| {
+        let _guard = state.lock().unwrap();
+        calculate_next_review(2.5, i64::MAX, 1, 4, chrono::Local::now().date_naive())
+    });
+    assert!(
+        result.is_ok(),
+        "review calculation must not panic while the database is locked"
+    );
+    assert!(result.unwrap().is_err());
+    let conn = state.lock().expect("database mutex remains usable");
+    assert!(create_card(&conn, Card::new("text", "still works")).is_ok());
+}
+
+#[test]
+fn invalid_numeric_schedules_and_date_overflow_return_errors() {
+    let today = chrono::Local::now().date_naive();
+    for (ease, repetitions, interval) in [
+        (f64::NAN, 0, 0),
+        (f64::INFINITY, 0, 0),
+        (f64::MAX, 0, 0),
+        (2.5, -1, 0),
+        (2.5, 1, -1),
+        (2.5, 1, i64::MAX),
+    ] {
+        assert!(calculate_next_review(ease, repetitions, interval, 4, today).is_err());
+    }
+    assert!(calculate_next_review(2.5, 0, 0, 4, chrono::NaiveDate::MAX).is_err());
+}

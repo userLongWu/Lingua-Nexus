@@ -1,3 +1,5 @@
+pub mod ai;
+pub mod backup;
 pub mod commands;
 pub mod db;
 pub mod models;
@@ -29,6 +31,10 @@ pub fn run() {
             commands::review_card,
             commands::import_from_srt,
             commands::import_srt,
+            commands::get_ai_status,
+            commands::translate_text,
+            commands::export_backup,
+            commands::restore_backup,
             commands::lookup_word
         ])
         .run(tauri::generate_context!())

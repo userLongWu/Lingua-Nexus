@@ -1,6 +1,6 @@
 export type SourceType = "text" | "subtitle" | "dictionary";
 export type SourceFilter = SourceType | "all";
-export type PageKey = "dashboard" | "cards" | "import" | "review";
+export type PageKey = "dashboard" | "cards" | "import" | "review" | "data";
 
 export interface Card {
   id: string;
@@ -28,6 +28,8 @@ export type UpdateCardRequest = Card;
 export interface CardStats {
   dueToday: number;
   total: number;
+  reviewedToday: number;
+  reviewDays: { date: string; count: number }[];
 }
 
 export interface Review {
@@ -42,4 +44,10 @@ export interface ManualCardInput {
   translatedText: string;
   sourceTitle: string;
   tags: string;
+}
+
+export interface AiStatus { enabled: boolean; model: string | null; message: string; }
+export interface RestoreReport {
+  cardsAdded: number; cardsSkipped: number; cardConflicts: number;
+  reviewsAdded: number; reviewsSkipped: number; reviewConflicts: number;
 }

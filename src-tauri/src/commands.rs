@@ -194,3 +194,51 @@ struct DictionaryDefinition {
     #[serde(default)]
     synonyms: Vec<String>,
 }
+
+#[tauri::command]
+pub fn get_ai_status() -> crate::ai::AiStatus {
+    crate::ai::status()
+}
+
+#[tauri::command]
+pub async fn translate_text(text: String) -> Result<String, String> {
+    let config = crate::ai::AiConfig::from_env()?;
+    tauri::async_runtime::spawn_blocking(move || {
+        crate::ai::translate(config, text, std::time::Duration::from_secs(30))
+    })
+    .await
+    .map_err(|_| "AI task could not finish. Please retry.".to_string())?
+}
+
+#[tauri::command]
+pub fn export_backup(
+    app: tauri::AppHandle,
+    state: State<'_, db::AppState>,
+) -> Result<String, String> {
+    use tauri::Manager;
+    let backup = {
+        let conn = state
+            .conn
+            .lock()
+            .map_err(|_| "Database unavailable.".to_string())?;
+        crate::backup::snapshot(&conn)?
+    };
+    let directory = app
+        .path()
+        .download_dir()
+        .map_err(|_| "Downloads folder unavailable.".to_string())?;
+    crate::backup::export_file(&directory, &backup)
+}
+
+#[tauri::command]
+pub fn restore_backup(
+    state: State<'_, db::AppState>,
+    json: String,
+) -> Result<crate::backup::RestoreReport, String> {
+    let backup = crate::backup::parse_backup(&json)?;
+    let conn = state
+        .conn
+        .lock()
+        .map_err(|_| "Database unavailable.".to_string())?;
+    crate::backup::restore(&conn, backup)
+}

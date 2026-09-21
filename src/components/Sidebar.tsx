@@ -10,6 +10,7 @@ const items: Array<{ key: PageKey; label: string }> = [
   { key: "cards", label: "Cards" },
   { key: "import", label: "Import" },
   { key: "review", label: "Review" },
+  { key: "data", label: "Data" },
 ];
 
 export function Sidebar({ activePage, onNavigate }: SidebarProps) {
@@ -21,7 +22,7 @@ export function Sidebar({ activePage, onNavigate }: SidebarProps) {
         </p>
         <h1 className="mt-1 text-xl font-semibold text-slate-950">Corpus SRS</h1>
       </div>
-      <nav className="grid grid-cols-4 gap-2 md:grid-cols-1">
+      <nav className="grid grid-cols-5 gap-2 md:grid-cols-1">
         {items.map((item) => (
           <button
             key={item.key}

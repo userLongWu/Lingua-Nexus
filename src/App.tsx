@@ -4,6 +4,7 @@ import type { PageKey } from "./types";
 import { CardsPage } from "./pages/CardsPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { ImportPage } from "./pages/ImportPage";
+import { DataPage } from "./pages/DataPage";
 import { ReviewPage } from "./pages/ReviewPage";
 
 function App() {
@@ -25,6 +26,8 @@ function renderPage(page: PageKey) {
       return <CardsPage />;
     case "import":
       return <ImportPage />;
+    case "data":
+      return <DataPage />;
     case "review":
       return <ReviewPage />;
   }

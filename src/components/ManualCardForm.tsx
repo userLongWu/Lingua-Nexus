@@ -1,4 +1,5 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useRef, useState } from "react";
+import { AiTranslation } from "./AiTranslation";
 import { buildManualCard } from "../lib/cardUtils";
 import { createCard } from "../lib/api";
 import type { Card } from "../types";
@@ -8,6 +9,7 @@ interface ManualCardFormProps {
 }
 
 export function ManualCardForm({ onCreated }: ManualCardFormProps) {
+  const saving = useRef(false);
   const [originalText, setOriginalText] = useState("");
   const [translatedText, setTranslatedText] = useState("");
   const [sourceTitle, setSourceTitle] = useState("");
@@ -18,6 +20,7 @@ export function ManualCardForm({ onCreated }: ManualCardFormProps) {
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
+    if (saving.current) return;
     setError(null);
     setMessage(null);
 
@@ -26,6 +29,7 @@ export function ManualCardForm({ onCreated }: ManualCardFormProps) {
       return;
     }
 
+    saving.current = true;
     setLoading(true);
     try {
       const created = await createCard(
@@ -40,6 +44,7 @@ export function ManualCardForm({ onCreated }: ManualCardFormProps) {
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
+      saving.current = false;
       setLoading(false);
     }
   }
@@ -54,6 +59,7 @@ export function ManualCardForm({ onCreated }: ManualCardFormProps) {
           id="manual-original"
           className="field min-h-24"
           value={originalText}
+          disabled={loading}
           onChange={(event) => setOriginalText(event.currentTarget.value)}
         />
       </div>
@@ -65,9 +71,11 @@ export function ManualCardForm({ onCreated }: ManualCardFormProps) {
           id="manual-translation"
           className="field min-h-20"
           value={translatedText}
+          disabled={loading}
           onChange={(event) => setTranslatedText(event.currentTarget.value)}
         />
       </div>
+      <AiTranslation sourceText={originalText} currentTranslation={translatedText} disabled={loading} onApply={setTranslatedText} />
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <label className="field-label" htmlFor="manual-source">
@@ -77,6 +85,7 @@ export function ManualCardForm({ onCreated }: ManualCardFormProps) {
             id="manual-source"
             className="field"
             value={sourceTitle}
+          disabled={loading}
             onChange={(event) => setSourceTitle(event.currentTarget.value)}
           />
         </div>
@@ -88,6 +97,7 @@ export function ManualCardForm({ onCreated }: ManualCardFormProps) {
             id="manual-tags"
             className="field"
             value={tags}
+          disabled={loading}
             onChange={(event) => setTags(event.currentTarget.value)}
           />
         </div>

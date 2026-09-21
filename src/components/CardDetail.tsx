@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useState } from "react";
+import { AiTranslation } from "./AiTranslation";
 import { formatDate, getSourceLabel, parseTags } from "../lib/cardUtils";
 import type { Card, Review } from "../types";
 
@@ -141,6 +142,12 @@ export function CardDetail({
               }}
             />
           </div>
+          <AiTranslation
+            sourceText={editState.originalText}
+            currentTranslation={editState.translatedText}
+            disabled={saving || deleting}
+            onApply={(translatedText) => setEditState((current) => ({ ...current, translatedText }))}
+          />
           <div className="grid gap-4 sm:grid-cols-2">
             <TextField
               id="detail-source-title"

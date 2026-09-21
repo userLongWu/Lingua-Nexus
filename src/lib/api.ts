@@ -1,6 +1,8 @@
 import { invoke } from "@tauri-apps/api/core";
 import type {
   Card,
+  AiStatus,
+  RestoreReport,
   CardStats,
   CreateCardRequest,
   Review,
@@ -56,3 +58,8 @@ export function importFromSrt(
 export function lookupWord(word: string): Promise<Card> {
   return invoke<Card>("lookup_word", { word });
 }
+
+export function getAiStatus(): Promise<AiStatus> { return invoke("get_ai_status"); }
+export function translateText(text: string): Promise<string> { return invoke("translate_text", { text }); }
+export function exportBackup(): Promise<string> { return invoke("export_backup"); }
+export function restoreBackup(json: string): Promise<RestoreReport> { return invoke("restore_backup", { json }); }

@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Card {
     pub id: String,
     pub source_type: String,
@@ -51,10 +51,19 @@ impl Card {
 pub struct CardStats {
     pub due_today: i64,
     pub total: i64,
+    pub reviewed_today: i64,
+    pub review_days: Vec<ReviewDay>,
 }
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct ReviewDay {
+    pub date: String,
+    pub count: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Review {
     pub id: String,
     pub card_id: String,
