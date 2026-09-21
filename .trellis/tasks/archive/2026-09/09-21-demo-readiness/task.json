@@ -1,0 +1,29 @@
+{
+  "id": "demo-readiness",
+  "name": "demo-readiness",
+  "title": "完善可演示版本",
+  "description": "",
+  "status": "completed",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P2",
+  "creator": "userLongWu",
+  "assignee": "userLongWu",
+  "createdAt": "2026-09-21",
+  "completedAt": "2026-09-21",
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": "b2d1eec",
+  "pr_url": null,
+  "subtasks": [],
+  "children": [
+    "09-21-demo-flow",
+    "09-21-demo-docs"
+  ],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "Completed and verified; see parent verification.md. Local changes only; no GitHub push.",
+  "meta": {}
+}
