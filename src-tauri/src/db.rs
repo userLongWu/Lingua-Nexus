@@ -61,10 +61,14 @@ pub fn create_card(conn: &Connection, card: Card) -> Result<Card, String> {
 }
 
 pub fn create_cards(conn: &Connection, cards: Vec<Card>) -> Result<Vec<Card>, String> {
+    let transaction = conn
+        .unchecked_transaction()
+        .map_err(|err| err.to_string())?;
     let mut created = Vec::with_capacity(cards.len());
     for card in cards {
-        created.push(create_card(conn, card)?);
+        created.push(create_card(&transaction, card)?);
     }
+    transaction.commit().map_err(|err| err.to_string())?;
     Ok(created)
 }
 
@@ -201,17 +205,22 @@ pub fn update_review_schedule(
     interval_days: i64,
     next_review_date: &str,
 ) -> Result<(), String> {
-    conn.execute(
-        r#"
+    let transaction = conn
+        .unchecked_transaction()
+        .map_err(|err| err.to_string())?;
+    transaction
+        .execute(
+            r#"
         INSERT INTO reviews (id, card_id, score)
         VALUES (?1, ?2, ?3)
         "#,
-        params![Uuid::new_v4().to_string(), card_id, score as i64],
-    )
-    .map_err(|err| err.to_string())?;
+            params![Uuid::new_v4().to_string(), card_id, score as i64],
+        )
+        .map_err(|err| err.to_string())?;
 
-    conn.execute(
-        r#"
+    let updated = transaction
+        .execute(
+            r#"
         UPDATE cards
         SET easiness_factor = ?1,
             repetition_number = ?2,
@@ -220,17 +229,21 @@ pub fn update_review_schedule(
             last_review_date = ?5
         WHERE id = ?6
         "#,
-        params![
-            easiness_factor,
-            repetition_number,
-            interval_days,
-            next_review_date,
-            today_string(),
-            card_id
-        ],
-    )
-    .map_err(|err| err.to_string())?;
+            params![
+                easiness_factor,
+                repetition_number,
+                interval_days,
+                next_review_date,
+                today_string(),
+                card_id
+            ],
+        )
+        .map_err(|err| err.to_string())?;
 
+    if updated != 1 {
+        return Err("Card not found.".to_string());
+    }
+    transaction.commit().map_err(|err| err.to_string())?;
     Ok(())
 }
 

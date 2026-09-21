@@ -115,12 +115,13 @@ export function CardDetail({
               id="detail-original"
               className="field min-h-24"
               value={editState.originalText}
-              onChange={(event) =>
+              onChange={(event) => {
+                const value = event.currentTarget.value;
                 setEditState((current) => ({
                   ...current,
-                  originalText: event.currentTarget.value,
-                }))
-              }
+                  originalText: value,
+                }));
+              }}
             />
           </div>
           <div>
@@ -131,12 +132,13 @@ export function CardDetail({
               id="detail-translation"
               className="field min-h-20"
               value={editState.translatedText}
-              onChange={(event) =>
+              onChange={(event) => {
+                const value = event.currentTarget.value;
                 setEditState((current) => ({
                   ...current,
-                  translatedText: event.currentTarget.value,
-                }))
-              }
+                  translatedText: value,
+                }));
+              }}
             />
           </div>
           <div className="grid gap-4 sm:grid-cols-2">

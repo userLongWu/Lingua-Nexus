@@ -1,4 +1,4 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { createCard, lookupWord } from "../lib/api";
 import type { Card } from "../types";
 
@@ -7,6 +7,11 @@ interface DictionaryLookupProps {
 }
 
 export function DictionaryLookup({ onCreated }: DictionaryLookupProps) {
+  const lookupVersion = useRef(0);
+  const lookupPending = useRef(false);
+  const createPending = useRef(false);
+  const savedResult = useRef(false);
+  const [saved, setSaved] = useState(false);
   const [word, setWord] = useState("");
   const [result, setResult] = useState<Card | null>(null);
   const [lookupLoading, setLookupLoading] = useState(false);
@@ -14,43 +19,74 @@ export function DictionaryLookup({ onCreated }: DictionaryLookupProps) {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
-  async function handleLookup(event: FormEvent) {
-    event.preventDefault();
+  useEffect(() => () => { lookupVersion.current += 1; }, []);
+
+  function changeWord(value: string) {
+    if (createPending.current) return;
+    lookupVersion.current += 1;
+    lookupPending.current = false;
+    savedResult.current = false;
+    setWord(value);
+    setResult(null);
+    setSaved(false);
+    setLookupLoading(false);
     setError(null);
     setMessage(null);
+  }
+
+  async function handleLookup(event: FormEvent) {
+    event.preventDefault();
+    if (lookupPending.current || createPending.current) return;
+    const version = ++lookupVersion.current;
+    setResult(null);
+    setError(null);
+    setMessage(null);
+    setSaved(false);
+    savedResult.current = false;
 
     if (!word.trim()) {
       setError("Word is required.");
       return;
     }
 
+    lookupPending.current = true;
     setLookupLoading(true);
     try {
-      setResult(await lookupWord(word));
+      const found = await lookupWord(word.trim());
+      if (version === lookupVersion.current) setResult(found);
     } catch (err) {
-      setResult(null);
-      setError(err instanceof Error ? err.message : String(err));
+      if (version === lookupVersion.current) {
+        setError(err instanceof Error ? err.message : String(err));
+      }
     } finally {
-      setLookupLoading(false);
+      if (version === lookupVersion.current) {
+        lookupPending.current = false;
+        setLookupLoading(false);
+      }
     }
   }
 
   async function handleCreate() {
+    if (createPending.current || lookupPending.current || savedResult.current) return;
     if (!result) {
       setError("Look up a word before creating a card.");
       return;
     }
 
+    createPending.current = true;
     setCreateLoading(true);
     setError(null);
     setMessage(null);
     try {
       const created = await createCard(result);
+      savedResult.current = true;
+      setSaved(true);
       onCreated(created);
       setMessage("Dictionary card created.");
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
+      createPending.current = false;
       setCreateLoading(false);
     }
   }
@@ -66,12 +102,13 @@ export function DictionaryLookup({ onCreated }: DictionaryLookupProps) {
             id="dictionary-word"
             className="field"
             value={word}
-            onChange={(event) => setWord(event.currentTarget.value)}
+            disabled={createLoading}
+            onChange={(event) => changeWord(event.currentTarget.value)}
           />
         </div>
         <button
           className="btn-primary self-end"
-          disabled={lookupLoading}
+          disabled={lookupLoading || createLoading}
           type="submit"
         >
           {lookupLoading ? "Searching..." : "Lookup"}
@@ -89,11 +126,11 @@ export function DictionaryLookup({ onCreated }: DictionaryLookupProps) {
           <p className="mt-2 text-sm text-slate-700">{result.originalText}</p>
           <button
             className="btn-secondary mt-4"
-            disabled={createLoading}
+            disabled={createLoading || lookupLoading || saved}
             type="button"
             onClick={handleCreate}
           >
-            {createLoading ? "Creating..." : "Create card"}
+            {createLoading ? "Creating..." : saved ? "Card created" : "Create card"}
           </button>
         </div>
       ) : (

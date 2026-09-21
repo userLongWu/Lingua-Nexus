@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CardDetail } from "../components/CardDetail";
 import { CardItem } from "../components/CardItem";
 import { filterCards } from "../lib/cardUtils";
@@ -6,6 +6,8 @@ import { deleteCard, getAllCards, getCardReviews, updateCard } from "../lib/api"
 import type { Card, Review, SourceFilter } from "../types";
 
 export function CardsPage() {
+  const mutationPending = useRef(false);
+  const selectedId = useRef<string | null>(null);
   const [cards, setCards] = useState<Card[]>([]);
   const [selectedCard, setSelectedCard] = useState<Card | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -13,11 +15,13 @@ export function CardsPage() {
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [historyCardId, setHistoryCardId] = useState<string | null>(null);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [mutationError, setMutationError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  selectedId.current = selectedCard?.id ?? null;
   const filteredCards = useMemo(
     () => filterCards(cards, query, sourceFilter),
     [cards, query, sourceFilter],
@@ -44,24 +48,33 @@ export function CardsPage() {
   }, []);
 
   useEffect(() => {
-    if (!selectedCard) {
-      setReviews([]);
-      return;
-    }
-
+    let active = true;
+    const cardId = selectedCard?.id ?? null;
+    setReviews([]);
+    setHistoryCardId(cardId);
     setMutationError(null);
-    setHistoryLoading(true);
     setHistoryError(null);
-    getCardReviews(selectedCard.id)
-      .then(setReviews)
+    setHistoryLoading(cardId !== null);
+    if (cardId === null) return;
+
+    getCardReviews(cardId)
+      .then((loaded) => { if (active) setReviews(loaded); })
       .catch((err: unknown) => {
-        setReviews([]);
-        setHistoryError(err instanceof Error ? err.message : String(err));
+        if (active) setHistoryError(err instanceof Error ? err.message : String(err));
       })
-      .finally(() => setHistoryLoading(false));
-  }, [selectedCard]);
+      .finally(() => { if (active) setHistoryLoading(false); });
+    return () => { active = false; };
+  }, [selectedCard?.id]);
+
+  function selectCard(card: Card) {
+    selectedId.current = card.id;
+    setMutationError(null);
+    setSelectedCard(card);
+  }
 
   async function handleSave(card: Card) {
+    if (mutationPending.current) return;
+    mutationPending.current = true;
     setSaving(true);
     setMutationError(null);
     try {
@@ -69,33 +82,33 @@ export function CardsPage() {
       setCards((currentCards) =>
         currentCards.map((currentCard) => (currentCard.id === saved.id ? saved : currentCard)),
       );
-      setSelectedCard(saved);
+      setSelectedCard((current) => current?.id === saved.id ? saved : current);
     } catch (err) {
-      setMutationError(err instanceof Error ? err.message : String(err));
+      if (selectedId.current === card.id) {
+        setMutationError(err instanceof Error ? err.message : String(err));
+      }
       throw err;
     } finally {
+      mutationPending.current = false;
       setSaving(false);
     }
   }
 
   async function handleDelete(card: Card) {
-    if (!window.confirm("Delete this card and its review history?")) {
-      return;
-    }
-
+    if (mutationPending.current || !window.confirm("Delete this card and its review history?")) return;
+    mutationPending.current = true;
     setDeleting(true);
     setMutationError(null);
     try {
       await deleteCard(card.id);
-      setCards((currentCards) => {
-        const nextCards = currentCards.filter((currentCard) => currentCard.id !== card.id);
-        setSelectedCard(nextCards[0] ?? null);
-        return nextCards;
-      });
-      setReviews([]);
+      setCards((currentCards) => currentCards.filter((currentCard) => currentCard.id !== card.id));
+      setSelectedCard((current) => current?.id === card.id ? null : current);
     } catch (err) {
-      setMutationError(err instanceof Error ? err.message : String(err));
+      if (selectedId.current === card.id) {
+        setMutationError(err instanceof Error ? err.message : String(err));
+      }
     } finally {
+      mutationPending.current = false;
       setDeleting(false);
     }
   }
@@ -146,7 +159,7 @@ export function CardsPage() {
                   key={card.id}
                   card={card}
                   selected={selectedCard?.id === card.id}
-                  onSelect={setSelectedCard}
+                  onSelect={selectCard}
                 />
               ))
             ) : (
@@ -154,10 +167,11 @@ export function CardsPage() {
             )}
           </div>
           <CardDetail
+            key={selectedCard?.id ?? "empty"}
             card={selectedCard}
-            reviews={reviews}
-            loading={historyLoading}
-            error={historyError}
+            reviews={historyCardId === selectedCard?.id ? reviews : []}
+            loading={historyLoading || historyCardId !== selectedCard?.id}
+            error={historyCardId === selectedCard?.id ? historyError : null}
             saving={saving}
             deleting={deleting}
             mutationError={mutationError}

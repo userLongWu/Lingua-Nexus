@@ -1,6 +1,7 @@
 use chrono::NaiveDate;
 use lingua_nexus_lib::db::{
-    create_card, due_today, find_card, reviews_for_card, run_migration, update_review_schedule,
+    create_card, create_cards, due_today, find_card, reviews_for_card, run_migration,
+    update_review_schedule,
 };
 use lingua_nexus_lib::models::Card;
 use lingua_nexus_lib::review::calculate_next_review;
@@ -92,4 +93,80 @@ fn creates_due_card_and_records_review_schedule() {
     assert_eq!(reviewed.repetition_number, 1);
     assert_eq!(reviews.len(), 1);
     assert_eq!(reviews[0].score, 4);
+}
+
+#[test]
+fn plain_text_preserves_punctuation_numbers_and_non_timing_arrows() {
+    assert_eq!(
+        parse_card_texts("Dr. Smith paid 3.14... Really? Yes!\r\n\r\n42\rA --> B"),
+        vec!["Dr. Smith paid 3.14... Really? Yes!", "42", "A --> B"]
+    );
+}
+
+#[test]
+fn srt_preserves_numeric_dialogue_and_multiline_cues() {
+    assert_eq!(
+        parse_card_texts("1\r\n00:00:01,000 --> 00:00:03,000\r\n42\r\nDr. Smith... 3.14\r\n \r\n2\r\n00:00:04,000 --> 00:00:06,000\r\n2026\r\n"),
+        vec!["42 Dr. Smith... 3.14", "2026"]
+    );
+}
+
+#[test]
+fn batch_import_rolls_back_on_later_insert_failure() {
+    let conn = Connection::open_in_memory().unwrap();
+    run_migration(&conn).unwrap();
+    let existing = create_card(&conn, Card::new("text", "Keep existing data")).unwrap();
+    conn.execute_batch("CREATE TRIGGER reject_import BEFORE INSERT ON cards WHEN NEW.original_text = 'Fail' BEGIN SELECT RAISE(ABORT, 'injected insert failure'); END;").unwrap();
+    let result = create_cards(
+        &conn,
+        vec![
+            Card::new("subtitle", "First"),
+            Card::new("subtitle", "Fail"),
+        ],
+    );
+    assert!(result.is_err());
+    assert_eq!(due_today(&conn).unwrap().len(), 1);
+    assert_eq!(
+        find_card(&conn, &existing.id).unwrap().original_text,
+        "Keep existing data"
+    );
+}
+
+#[test]
+fn batch_import_rolls_back_on_later_validation_failure() {
+    let conn = Connection::open_in_memory().unwrap();
+    run_migration(&conn).unwrap();
+    assert!(create_cards(
+        &conn,
+        vec![Card::new("subtitle", "First"), Card::new("subtitle", " ")]
+    )
+    .is_err());
+    assert!(due_today(&conn).unwrap().is_empty());
+}
+
+#[test]
+fn review_rolls_back_history_if_schedule_update_fails() {
+    let conn = Connection::open_in_memory().unwrap();
+    run_migration(&conn).unwrap();
+    let card = create_card(&conn, Card::new("text", "Hello")).unwrap();
+    conn.execute_batch("CREATE TRIGGER reject_schedule BEFORE UPDATE ON cards BEGIN SELECT RAISE(ABORT, 'injected update failure'); END;").unwrap();
+    assert!(update_review_schedule(&conn, &card.id, 4, 2.6, 1, 1, "2099-05-03").is_err());
+    assert!(reviews_for_card(&conn, &card.id).unwrap().is_empty());
+    let unchanged = find_card(&conn, &card.id).unwrap();
+    assert_eq!(unchanged.next_review_date, card.next_review_date);
+    assert_eq!(unchanged.repetition_number, 0);
+}
+
+#[test]
+fn review_history_insert_failure_keeps_schedule_unchanged() {
+    let conn = Connection::open_in_memory().unwrap();
+    run_migration(&conn).unwrap();
+    let card = create_card(&conn, Card::new("text", "Hello")).unwrap();
+    conn.execute_batch("CREATE TRIGGER reject_review BEFORE INSERT ON reviews BEGIN SELECT RAISE(ABORT, 'injected review failure'); END;").unwrap();
+    assert!(update_review_schedule(&conn, &card.id, 4, 2.6, 1, 1, "2099-05-03").is_err());
+    assert!(reviews_for_card(&conn, &card.id).unwrap().is_empty());
+    assert_eq!(
+        find_card(&conn, &card.id).unwrap().next_review_date,
+        card.next_review_date
+    );
 }

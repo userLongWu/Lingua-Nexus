@@ -73,30 +73,46 @@ export function getSourceLabel(sourceType: string): string {
   }
 }
 
+// Existing dictionary cards store their definition in originalText.
+export function getReviewText(card: Card): { front: string; back: string } {
+  if (card.sourceType === "dictionary" && card.wordToLearn?.trim()) {
+    return {
+      front: card.wordToLearn,
+      back: [card.originalText, card.translatedText].filter(Boolean).join("\n\n"),
+    };
+  }
+  return {
+    front: card.originalText,
+    back: card.translatedText || "No answer text added.",
+  };
+}
+
 export function parseImportPreview(input: string): string[] {
   const normalized = input.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
-  if (normalized.includes("-->")) {
-    return normalized
-      .split(/\n{2,}/)
-      .map((block) =>
-        block
-          .split("\n")
-          .map((line) => line.trim())
-          .filter(
-            (line) =>
-              line.length > 0 && !/^\d+$/.test(line) && !line.includes("-->"),
-          )
-          .join(" "),
-      )
-      .map(normalizeSpaces)
-      .filter(Boolean);
+  const isTimingLine = (line: string) =>
+    /^\d{2}:\d{2}:\d{2}[,.]\d{3}\s+-->\s+\d{2}:\d{2}:\d{2}[,.]\d{3}(?:\s|$)/.test(line.trim());
+
+  if (normalized.split("\n").some(isTimingLine)) {
+    const cards: string[] = [];
+    let cue: string[] = [];
+    let inCue = false;
+    for (const line of [...normalized.split("\n"), ""]) {
+      if (!line.trim()) {
+        const text = normalizeSpaces(cue.join(" "));
+        if (text) cards.push(text);
+        cue = [];
+        inCue = false;
+      } else if (isTimingLine(line)) {
+        inCue = true;
+      } else if (inCue) {
+        // Numeric text after a timestamp is dialogue, not a cue index.
+        cue.push(line);
+      }
+    }
+    return cards;
   }
 
-  return normalized
-    .split("\n")
-    .flatMap(splitPlainTextLine)
-    .map(normalizeSpaces)
-    .filter(Boolean);
+  return normalized.split("\n").map(normalizeSpaces).filter(Boolean);
 }
 
 export function parseTags(tags: string): string[] {
@@ -121,27 +137,4 @@ function normalizeOptional(value: string): string | null {
 
 function normalizeSpaces(value: string): string {
   return value.trim().replace(/\s+/g, " ");
-}
-
-function splitPlainTextLine(line: string): string[] {
-  const sentences: string[] = [];
-  let current = "";
-
-  for (const character of line) {
-    current += character;
-    if ([".", "!", "?", "。", "！", "？"].includes(character)) {
-      const sentence = current.trim();
-      if (sentence) {
-        sentences.push(sentence);
-      }
-      current = "";
-    }
-  }
-
-  const remaining = current.trim();
-  if (remaining) {
-    sentences.push(remaining);
-  }
-
-  return sentences;
 }

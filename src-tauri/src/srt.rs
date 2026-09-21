@@ -1,73 +1,45 @@
 pub fn parse_card_texts(input: &str) -> Vec<String> {
     let normalized = input.replace("\r\n", "\n").replace('\r', "\n");
-    let blocks: Vec<&str> = normalized.split("\n\n").collect();
-
-    if normalized.contains("-->") {
-        blocks
-            .iter()
-            .filter_map(|block| {
-                let text = block
-                    .lines()
-                    .filter_map(|line| {
-                        let trimmed = line.trim();
-                        if trimmed.is_empty()
-                            || trimmed.chars().all(|ch| ch.is_ascii_digit())
-                            || trimmed.contains("-->")
-                        {
-                            None
-                        } else {
-                            Some(trimmed)
-                        }
-                    })
-                    .collect::<Vec<_>>()
-                    .join(" ");
-
-                normalize_card_text(&text)
-            })
-            .collect()
+    if normalized.lines().any(is_timing_line) {
+        let mut cards = Vec::new();
+        let mut cue = Vec::new();
+        let mut in_cue = false;
+        for line in normalized.lines().chain(std::iter::once("")) {
+            if line.trim().is_empty() {
+                if let Some(text) = normalize_card_text(&cue.join(" ")) {
+                    cards.push(text);
+                }
+                cue.clear();
+                in_cue = false;
+            } else if is_timing_line(line) {
+                in_cue = true;
+            } else if in_cue {
+                cue.push(line);
+            }
+        }
+        cards
     } else {
-        normalized
-            .lines()
-            .flat_map(split_plain_text_line)
-            .filter_map(|text| normalize_card_text(&text))
-            .collect()
+        normalized.lines().filter_map(normalize_card_text).collect()
     }
 }
 
-fn split_plain_text_line(line: &str) -> Vec<String> {
-    let mut sentences = Vec::new();
-    let mut current = String::new();
+fn is_timing_line(line: &str) -> bool {
+    let mut parts = line.split_whitespace();
+    matches!((parts.next(), parts.next(), parts.next()),
+        (Some(start), Some("-->"), Some(end)) if is_timestamp(start) && is_timestamp(end))
+}
 
-    for ch in line.chars() {
-        current.push(ch);
-        if matches!(ch, '.' | '!' | '?' | '。' | '！' | '？') {
-            let sentence = current.trim();
-            if !sentence.is_empty() {
-                sentences.push(sentence.to_string());
-            }
-            current.clear();
-        }
-    }
-
-    let remaining = current.trim();
-    if !remaining.is_empty() {
-        sentences.push(remaining.to_string());
-    }
-
-    sentences
+fn is_timestamp(value: &str) -> bool {
+    let bytes = value.as_bytes();
+    bytes.len() == 12
+        && bytes.iter().enumerate().all(|(index, byte)| match index {
+            2 | 5 => *byte == b':',
+            8 => matches!(*byte, b',' | b'.'),
+            _ => byte.is_ascii_digit(),
+        })
 }
 
 fn normalize_card_text(text: &str) -> Option<String> {
-    let trimmed = text
-        .split_whitespace()
-        .collect::<Vec<_>>()
-        .join(" ")
-        .trim()
-        .to_string();
-
-    if trimmed.is_empty() {
-        None
-    } else {
-        Some(trimmed)
-    }
+    let normalized = text.split_whitespace().collect::<Vec<_>>().join(" ");
+    (!normalized.is_empty()).then_some(normalized)
 }

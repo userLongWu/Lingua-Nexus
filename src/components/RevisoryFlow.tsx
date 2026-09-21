@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { getSourceLabel } from "../lib/cardUtils";
+import { useRef, useState } from "react";
+import { getReviewText, getSourceLabel } from "../lib/cardUtils";
 import { reviewCard } from "../lib/api";
 import type { Card } from "../types";
 
@@ -25,27 +25,32 @@ export function RevisoryFlow({
   onRetry,
   onReviewed,
 }: RevisoryFlowProps) {
-  const [revealed, setRevealed] = useState(false);
+  const [revealedCardId, setRevealedCardId] = useState<string | null>(null);
+  const submitting = useRef(false);
   const [submittingScore, setSubmittingScore] = useState<number | null>(null);
   const [reviewError, setReviewError] = useState<string | null>(null);
   const [reviewedCount, setReviewedCount] = useState(0);
   const activeCard = cards[0] ?? null;
+  const revealed = activeCard !== null && revealedCardId === activeCard.id;
+  const reviewText = activeCard ? getReviewText(activeCard) : null;
 
   async function handleScore(score: number) {
-    if (!activeCard) {
+    if (!activeCard || !revealed || submitting.current) {
       return;
     }
 
+    submitting.current = true;
     setSubmittingScore(score);
     setReviewError(null);
     try {
       await reviewCard(activeCard.id, score);
       onReviewed(activeCard.id);
       setReviewedCount((current) => current + 1);
-      setRevealed(false);
+      setRevealedCardId(null);
     } catch (err) {
       setReviewError(err instanceof Error ? err.message : String(err));
     } finally {
+      submitting.current = false;
       setSubmittingScore(null);
     }
   }
@@ -87,18 +92,17 @@ export function RevisoryFlow({
       </div>
       <div className="min-h-44 rounded-lg bg-slate-50 p-6">
         <p className="text-xl font-semibold leading-relaxed text-slate-950">
-          {activeCard.wordToLearn ? `${activeCard.wordToLearn}: ` : ""}
-          {activeCard.originalText}
+          {reviewText?.front}
         </p>
         {revealed ? (
-          <p className="mt-5 text-base text-slate-700">
-            {activeCard.translatedText || activeCard.sourceTitle || "No answer text added."}
+          <p className="mt-5 whitespace-pre-line text-base text-slate-700">
+            {reviewText?.back}
           </p>
         ) : null}
       </div>
       {reviewError ? <p className="text-sm text-red-600">{reviewError}</p> : null}
       {!revealed ? (
-        <button className="btn-primary justify-self-start" type="button" onClick={() => setRevealed(true)}>
+        <button className="btn-primary justify-self-start" type="button" onClick={() => setRevealedCardId(activeCard.id)}>
           Show answer
         </button>
       ) : (

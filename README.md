@@ -1,31 +1,81 @@
-# Lingua Nexus（语言第二大脑）
+# Lingua Nexus · 语言学习 Demo
 
-> 一个基于真实语料的语言学习闭环系统。从视频/字幕中捕获知识切片，在写作输出时智能激活，最终构建个人语言知识星系。
+一个使用 **Tauri 2、React、TypeScript、Rust 和 SQLite** 构建的桌面学习工具。当前演示的是完整的第一阶段流程：创建语料卡片、导入字幕、查询单词，再通过间隔复习回顾内容。
 
-## 核心理念
-打破 Duolingo 式的“散装知识点”，将 **输入 → 内化 → 输出** 串联为可生长的个人语料库。
-- **Capture**：从视频、文本中一键生成带上下文的语料卡片。
-- **Connect**：以可视化图谱组织词汇、语法，形成网络。
-- **Activate**：写作/口语时主动推送相关表达，并给出语境化反馈。
+> 这是学习与验证交互的 Demo。AI 写作辅助、知识图谱和云同步尚未实现；当前版本无需账号，也不需要 AI API Key。
 
-## 技术栈
-- **桌面应用**：Tauri v2 (Rust 后端) + React (TypeScript) 前端
-- **数据库**：SQLite（通过 `better-sqlite3` 或 `sqlx`，在 Rust 端操作）
-- **UI**：Tailwind CSS + 组件库（Radix UI / Ant Design）
-- **AI 集成**：预留 OpenAI / Ollama 接口用于语法润色、写作推荐
+## 当前功能
 
-## 开发阶段
-1. **Phase 1 (MVP)** – 基础语料卡片与间隔重复复习
-2. **Phase 2** – 写作辅助面板与 AI 语法手术灯
-3. **Phase 3** – 可视化知识图谱与多语言对比
+- **Dashboard**：查看卡片总数、到期数量及待复习卡片。
+- **Cards**：搜索卡片、按来源筛选，编辑原文、译文、标签和复习日期，查看复习历史，确认后删除。
+- **Import**：手动建卡、粘贴 SRT 字幕或纯文本、预览导入内容；通过在线词典查询英文单词并保存。
+- **Review**：先回想答案，再翻面查看，按 Again / Hard / Good / Easy 评分并更新下次复习日期。
 
-## 本地开发
+数据保存在本机 SQLite。只有在线词典查询需要网络，会将查询的单词发送到 [Free Dictionary API](https://dictionaryapi.dev/)。
+
+## 本地运行
+
+本次验证环境：macOS、Node.js 24、npm 11、Rust 1.97、Xcode。其他系统还需满足 [Tauri 的平台前置要求](https://v2.tauri.app/start/prerequisites/)。
+
+先确认 Node.js、Rust/Cargo 和平台编译工具已安装：
+
 ```bash
-# 安装依赖
-cd src-tauri
-cargo install tauri-cli
-cd ..
-npm install
+node --version
+cargo --version
+rustc --version
 
-# 启动开发服务器
+npm ci
 npm run tauri dev
+```
+
+如果已安装 Rust 但终端提示找不到 Cargo，可先加载 Rust 环境：
+
+```bash
+source "$HOME/.cargo/env"
+```
+
+`npm run tauri dev` 会启动前端开发服务并打开桌面窗口。单独运行 `npm run dev` 只启动前端，浏览器没有 Tauri 的数据库接口，不能代替完整桌面演示。
+
+## 三分钟演示
+
+1. 打开 **Import**，手动添加原文 `I'm gonna head out.`，译文填写“我要走了。”，点击 **Create card**。
+2. 粘贴以下 SRT，确认预览为两张卡片，然后导入：
+
+   ```srt
+   1
+   00:00:01,000 --> 00:00:03,000
+   Dr. Smith paid 3.14 dollars...
+
+   2
+   00:00:04,000 --> 00:00:06,000
+   2026
+   ```
+
+3. 进入 **Cards**，搜索 `Smith`，编辑该卡的译文并保存。纯文本按非空行导入，SRT 按字幕片段导入；小数、缩写、省略号和数字正文会保留。
+4. 进入 **Review**。新卡可以立即复习；点击 **Show answer** 后评分，完成的卡会移出本次队列，下次日期同时更新。
+5. 回到 **Dashboard** 检查到期数；关闭再打开应用，确认记录仍在。
+
+联网时还可以查询 `hello`，保存词典卡。词典卡复习时先显示单词，翻面后才显示释义；词典提供的是英文释义，不是自动中文翻译。
+
+更详细的步骤与故障排查见 [使用指南](./USER_GUIDE.md)。
+
+## 数据与限制
+
+- 默认数据库文件名：`lingua-nexus.sqlite3`，位于 Tauri 应用本地数据目录。
+- macOS 默认位置：`~/Library/Application Support/com.linguanexus.desktop/lingua-nexus.sqlite3`。
+- 如需备份，先退出应用，再复制数据库文件；本 Demo 没有云同步。
+- 词典依赖外部服务，网络不可用时可继续手动建卡、导入和复习。
+- 删除卡片会一并删除其复习历史，请先确认。
+- 当前间隔复习是简化算法，没有学习打卡、正确率统计或 AI 生成内容。
+
+## 验证命令
+
+```bash
+npm test
+npm run build
+cargo test --manifest-path src-tauri/Cargo.toml
+cargo fmt --manifest-path src-tauri/Cargo.toml --check
+cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
+```
+
+`npm run build` 验证 TypeScript 并构建前端资源。Rust 测试使用内存 SQLite，不修改日常学习数据库。
