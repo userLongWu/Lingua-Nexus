@@ -1,0 +1,29 @@
+{
+  "id": "ai-mvp",
+  "name": "ai-mvp",
+  "title": "真实 AI 本地 MVP",
+  "description": "",
+  "status": "completed",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P2",
+  "creator": "userLongWu",
+  "assignee": "userLongWu",
+  "createdAt": "2026-09-21",
+  "completedAt": "2026-09-21",
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": "35124ce",
+  "pr_url": null,
+  "subtasks": [],
+  "children": [
+    "09-21-mvp-core",
+    "09-21-mvp-docs"
+  ],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "Completed, independently reviewed and verified. See parent verification.md; live provider requires local credentials.",
+  "meta": {}
+}
